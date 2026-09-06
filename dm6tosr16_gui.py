@@ -79,13 +79,9 @@ draw = ImageDraw.Draw(image)
 # draw.rectangle((0, 0, width, height), outline=0, fill=(0, 0, 0))
 # disp.image(image, rotation)
 
-# # First define some constants to allow easy resizing of shapes.
-# padding = -2
-# top = padding
-# bottom = height - padding
-
-# Left edge.
+# Display constants
 x = 0
+top = -2
 
 # Load a TrueType font.
 # Some other nice fonts to try: http://www.dafont.com/bitmap.php
