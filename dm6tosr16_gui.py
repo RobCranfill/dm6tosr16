@@ -5,6 +5,7 @@ dm6tosr16 gui
 """
 
 import os
+import signal
 import subprocess
 import time
 
@@ -23,6 +24,22 @@ dc_pin = digitalio.DigitalInOut(board.D25)
 reset_pin = digitalio.DigitalInOut(board.D24)
 
 BACKLIGHT_PIN = board.D22
+backlight = digitalio.DigitalInOut(BACKLIGHT_PIN)
+backlight.switch_to_output()
+
+def backlight_off():
+    backlight.value = False
+
+def signal_handler(sig, frame):
+    print(f"Signal {sig} caught; terminating.")
+    backlight_off()
+    # sys.exit(0) # right?
+
+
+# for when we are run as a startup script
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
 
 # Config for display baudrate (default max is 24mhz)
 BAUDRATE = 64000000
@@ -94,75 +111,86 @@ extra_msg = ""
 
 while True:
     
-    extra_msg = ""
 
-    button_is_pushed = not button24.value
-    if button_is_pushed:
-        if not button_was_pushed:
-            extra_msg = f"Shutdown in {THRESHOLD}..."
-            print(extra_msg)
+    try:
+            
+        extra_msg = ""
+
+        button_is_pushed = not button24.value
+        if button_is_pushed:
+            if not button_was_pushed:
+                extra_msg = f"Shutdown in {THRESHOLD}..."
+                print(extra_msg)
+            else:
+                count -= 1
+                extra_msg = f"Shutdown in {count}..."
+                print(extra_msg)
+                if count == 0:
+                    print("DIE DIE DIE!")
+                    # Won't work if run in user space, but OK as service?
+                    os.system("shutdown now -h")
+                    time.sleep(60) # needed? useful?
+            button_was_pushed = True
         else:
-            count -= 1
-            extra_msg = f"Shutdown in {count}..."
-            print(extra_msg)
-            if count == 0:
-                print("DIE DIE DIE!")
-                os.system("shutdown now -h")
-                time.sleep(60) # needed? useful?
-        button_was_pushed = True
-    else:
-        if button_was_pushed:
-            extra_msg = "Shutdown aborted."
-            print(extra_msg)
-            button_was_pushed = False
-            count = THRESHOLD
+            if button_was_pushed:
+                extra_msg = "Shutdown aborted."
+                print(extra_msg)
+                button_was_pushed = False
+                count = THRESHOLD
 
 
-    # TODO: is this the best way to display this? Can I use labels instead????
+        # TODO: is this the best way to display this? Can I use labels instead????
 
-    # Draw a black filled box to clear the image.
-    draw.rectangle((0, 0, width, height), outline=0, fill=0)
+        # Draw a black filled box to clear the image.
+        draw.rectangle((0, 0, width, height), outline=0, fill=0)
 
-    # Shell scripts for system monitoring from here:
-    # https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
+        # Shell scripts for system monitoring from here:
+        # https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
 
-    cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
-    status_cpu = subprocess.check_output(cmd, shell=True).decode("utf-8")
+        cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
+        status_cpu = subprocess.check_output(cmd, shell=True).decode("utf-8")
 
-    cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
-    status_mem = subprocess.check_output(cmd, shell=True).decode("utf-8")
+        cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
+        status_mem = subprocess.check_output(cmd, shell=True).decode("utf-8")
 
-    cmd = 'df -h | awk \'$NF=="/"{printf "Disk: %d/%d GB  %s", $3,$2,$5}\''
-    status_disk = subprocess.check_output(cmd, shell=True).decode("utf-8")
+        cmd = 'df -h | awk \'$NF=="/"{printf "Disk: %d/%d GB  %s", $3,$2,$5}\''
+        status_disk = subprocess.check_output(cmd, shell=True).decode("utf-8")
 
-    cmd = "cat /sys/class/thermal/thermal_zone0/temp |  awk '{printf \"CPU Temp: %.1f C\", $(NF-0) / 1000}'"
-    status_temp = subprocess.check_output(cmd, shell=True).decode("utf-8")
+        cmd = "cat /sys/class/thermal/thermal_zone0/temp |  awk '{printf \"CPU Temp: %.1f C\", $(NF-0) / 1000}'"
+        status_temp = subprocess.check_output(cmd, shell=True).decode("utf-8")
 
-    # Write four lines of text.
-    y = top
-    draw.text((x, y), status_ip, font=font, fill="#FFFFFF")
+        # Write four lines of text.
+        y = top
+        draw.text((x, y), status_ip, font=font, fill="#FFFFFF")
 
-    yh = 22
-    y += yh
-    draw.text((x, y), status_cpu, font=font, fill="#FFFF00")
+        yh = 22
+        y += yh
+        draw.text((x, y), status_cpu, font=font, fill="#FFFF00")
 
-    y += yh
-    draw.text((x, y), status_mem, font=font, fill="#00FF00")
+        y += yh
+        draw.text((x, y), status_mem, font=font, fill="#00FF00")
 
-    y += yh
-    draw.text((x, y), status_disk, font=font, fill="#0000FF")
+        y += yh
+        draw.text((x, y), status_disk, font=font, fill="#0000FF")
 
-    y += yh
-    draw.text((x, y), status_temp, font=font, fill="#FF00FF")
+        y += yh
+        draw.text((x, y), status_temp, font=font, fill="#FF00FF")
 
-    # Shutdowwn stuff
-    y += yh * 4
-    draw.text((x, y), "<--- SHUTDOWN", font=font, fill="#FFFF00")
+        # Shutdowwn stuff
+        y += yh * 4
+        draw.text((x, y), "<--- SHUTDOWN", font=font, fill="#FFFF00")
 
-    y += yh
-    draw.text((x, y), extra_msg, font=font, fill="#FFFF00")
+        y += yh
+        draw.text((x, y), extra_msg, font=font, fill="#FFFF00")
 
 
-    # Display the image
-    disp.image(image, rotation)
-    time.sleep(0.5)
+        # Display the image
+        disp.image(image, rotation)
+        time.sleep(0.5)
+
+
+    except KeyboardInterrupt:
+        print("\nTerminating; turning off backlight.")
+        backlight_off()
+        # keep_running = False
+
