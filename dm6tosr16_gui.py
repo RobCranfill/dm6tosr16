@@ -128,7 +128,7 @@ while True:
                 if count == 0:
                     print("DIE DIE DIE!")
                     # Won't work if run in user space, but OK as service?
-                    os.system("shutdown now -h")
+                    os.system("shutdown -h now")
                     time.sleep(60) # needed? useful?
             button_was_pushed = True
         else:

@@ -17,6 +17,7 @@ since it's a Linux box and doesn't like having its power pulled while running.
 # Concept of Operation
 ## MIDI Routing
 Is handled by a couple calls to the standard Linux ALSA MIDI command 'aconnect'.
+Works like magic!
 
 ## GUI
 Shows status - what? - and allows nice shutdown.
@@ -28,8 +29,9 @@ A bunch of Linux stuff so the system runs automagically.
 # Requirements
  * Raspberry Pi Zero of some sort, running RPi OS (I used Debian 13/"Trixie").
  * DIN5 MIDI interface that Linux recognizes.
+ * Python 3.something.
  * Adafruit "Blinka" library
-   * Had to jump thru hoops for ''
+   * Had to jump thru hoops for 'LGPIO', as per https://pimylifeup.com/raspberry-pi-install-lgpio/
  * This project.
 
 # Running
@@ -41,5 +43,8 @@ A bunch of Linux stuff so the system runs automagically.
   * Handle interrupts
     * ^C: turn off backlight
     * SIGINT? or something for 'going down'?
+  * Can I show MIDI events in the GUI?
+    * Will have to be able to tap into the stream. Can do?
 ## Scripts
   * Can service keep the app alive? I think so.
+  * Error handling (if only message log) if MIDI hardware not found.
