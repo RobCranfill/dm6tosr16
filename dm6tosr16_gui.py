@@ -88,27 +88,35 @@ status_ip = "IP: " + subprocess.check_output(cmd, shell=True).decode("utf-8")
 count = THRESHOLD
 button_was_pushed = False
 
+extra_msg = ""
+
+
 while True:
+    
+    extra_msg = ""
 
     button_is_pushed = not button24.value
     if button_is_pushed:
         if not button_was_pushed:
-            print(f"Shutdown in {THRESHOLD}...")
+            extra_msg = f"Shutdown in {THRESHOLD}..."
+            print(extra_msg)
         else:
             count -= 1
-            print(f"{count}")			
+            extra_msg = f"Shutdown in {count}..."
+            print(extra_msg)
             if count == 0:
                 print("DIE DIE DIE!")
                 # os.system("shutdown now -h")
         button_was_pushed = True
     else:
         if button_was_pushed:
-            print("Countdown aborted.")
+            extra_msg = "Shutdown aborted."
+            print(extra_msg)
             button_was_pushed = False
             count = THRESHOLD
 
 
-    # TODO: is this the best way to do this? Can I use labels instead????
+    # TODO: is this the best way to display this? Can I use labels instead????
 
     # Draw a black filled box to clear the image.
     draw.rectangle((0, 0, width, height), outline=0, fill=0)
@@ -145,11 +153,14 @@ while True:
     y += yh
     draw.text((x, y), status_temp, font=font, fill="#FF00FF")
 
-
+    # Shutdowwn stuff
     y += yh * 4
-    draw.text((x, y), "<--- SHUTDOWN", font=font, fill="#FF00FF")
+    draw.text((x, y), "<--- SHUTDOWN", font=font, fill="#FFFF00")
+
+    y += yh
+    draw.text((x, y), extra_msg, font=font, fill="#FFFF00")
 
 
     # Display the image
     disp.image(image, rotation)
-    time.sleep(0.1)
+    time.sleep(0.5)
