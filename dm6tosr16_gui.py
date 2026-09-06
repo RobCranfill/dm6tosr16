@@ -7,91 +7,94 @@ dm6tosr16 gui
 import os
 import signal
 import subprocess
+import sys
 import time
+
+from PIL import Image, ImageDraw, ImageFont
 
 import board
 import digitalio
-from PIL import Image, ImageDraw, ImageFont
-
 from adafruit_rgb_display import st7789
 
 
-THRESHOLD = 5
+print(f"{sys.argv[0]} starting up...")
 
-# Configuration for 1.3" 240x240 TFT
-cs_pin = digitalio.DigitalInOut(board.CE0)
-dc_pin = digitalio.DigitalInOut(board.D25)
-reset_pin = digitalio.DigitalInOut(board.D24)
+# Main Event Loop pause time; TODO: needed?
+MEL_WAIT = 0.5
+
+# Count down from this for reboot:
+REBOOT_COUNT = 5
+
+# Configuration for Adafruit 1.3" 240x240 TFT
+CS_PIN = digitalio.DigitalInOut(board.CE0)
+DC_PIN = digitalio.DigitalInOut(board.D25)
+RESET_PIN = digitalio.DigitalInOut(board.D24)
+HEIGHT = 240
+WIDTH = 240
+BAUDRATE = 64000000
 
 BACKLIGHT_PIN = board.D22
-backlight = digitalio.DigitalInOut(BACKLIGHT_PIN)
-backlight.switch_to_output()
+_backlight = digitalio.DigitalInOut(BACKLIGHT_PIN)
+_backlight.switch_to_output()
 
 def backlight_off():
-    backlight.value = False
+    _backlight.value = False
 
+_keep_running = True
+
+# SIGTERM is sent to a service on system shutdown. Handle it.
+# We want to turn off the _backlight at least.
 def signal_handler(sig, frame):
     print(f"Signal {sig} caught; terminating.")
-    backlight_off()
-    # sys.exit(0) # right?
+    # backlight_off()
+    _keep_running = False
 
-
-# for when we are run as a startup script
-signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
 
-# Config for display baudrate (default max is 24mhz)
-BAUDRATE = 64000000
-
-# Setup SPI bus using hardware SPI
-spi = board.SPI()
-
 # Create the ST7789 display
 disp = st7789.ST7789(
-    spi,
-    cs=cs_pin,
-    dc=dc_pin,
-    rst=reset_pin,
+    board.SPI(),
+    cs=CS_PIN,
+    dc=DC_PIN,
+    rst=RESET_PIN,
     baudrate=BAUDRATE,
-    width=240,
-    height=240,
+    width=WIDTH,
+    height=HEIGHT,
     x_offset=0,
-    y_offset=80,
-)
+    y_offset=80, # magic number?
+    )
 
 # Create blank image for drawing.
 # Make sure to create image with mode 'RGB' for full color.
-height = disp.width  # we swap height/width to rotate it to landscape!
-width = disp.height
+height = disp.height
+width = disp.width
 image = Image.new("RGB", (width, height))
 rotation = 180
 
 # Get drawing object to draw on image.
 draw = ImageDraw.Draw(image)
 
-# Draw a black filled box to clear the image.
-draw.rectangle((0, 0, width, height), outline=0, fill=(0, 0, 0))
-disp.image(image, rotation)
+# # Draw a black filled box to clear the image.
+# draw.rectangle((0, 0, width, height), outline=0, fill=(0, 0, 0))
+# disp.image(image, rotation)
 
-# Draw some shapes.
-# First define some constants to allow easy resizing of shapes.
-padding = -2
-top = padding
-bottom = height - padding
+# # First define some constants to allow easy resizing of shapes.
+# padding = -2
+# top = padding
+# bottom = height - padding
 
-# Move left to right keeping track of the current x position for drawing shapes.
+# Left edge.
 x = 0
 
-# Alternatively load a TTF font.  Make sure the .ttf font file is in the
-# same directory as the python script!
+# Load a TrueType font.
 # Some other nice fonts to try: http://www.dafont.com/bitmap.php
 font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
 
-# Turn on the backlight
-backlight = digitalio.DigitalInOut(BACKLIGHT_PIN)
-backlight.switch_to_output()
-backlight.value = True
+# Turn on the _backlight
+_backlight = digitalio.DigitalInOut(BACKLIGHT_PIN)
+_backlight.switch_to_output()
+_backlight.value = True
 
 
 button24 = digitalio.DigitalInOut(board.D24)
@@ -103,40 +106,42 @@ button24.pull = digitalio.Pull.UP
 cmd = "hostname -I | cut -d' ' -f1"
 status_ip = "IP: " + subprocess.check_output(cmd, shell=True).decode("utf-8")
 
-count = THRESHOLD
+# For reboot function.
+count = REBOOT_COUNT
 button_was_pushed = False
 
+# Status message at bottom of screen
 extra_msg = ""
 
-
-while True:
-    
+# Main event loop. Catch exceptions and either restart and keep going, or die.
+#
+while _keep_running :
 
     try:
-            
+
         extra_msg = ""
 
         button_is_pushed = not button24.value
         if button_is_pushed:
             if not button_was_pushed:
-                extra_msg = f"Shutdown in {THRESHOLD}..."
+                extra_msg = f"Shutdown in {REBOOT_COUNT}..."
                 print(extra_msg)
             else:
                 count -= 1
                 extra_msg = f"Shutdown in {count}..."
                 print(extra_msg)
                 if count == 0:
-                    print("DIE DIE DIE!")
+                    print(f"{sys.argv[0]} shutting down!")
                     # Won't work if run in user space, but OK as service?
                     os.system("shutdown -h now")
-                    time.sleep(60) # needed? useful?
+                    time.sleep(60) # TODO: needed? useful?
             button_was_pushed = True
         else:
             if button_was_pushed:
                 extra_msg = "Shutdown aborted."
                 print(extra_msg)
                 button_was_pushed = False
-                count = THRESHOLD
+                count = REBOOT_COUNT
 
 
         # TODO: is this the best way to display this? Can I use labels instead????
@@ -188,9 +193,13 @@ while True:
         disp.image(image, rotation)
         time.sleep(0.5)
 
-
+    # TODO: Does ^C get caught here, or does the signal handler get it?
     except KeyboardInterrupt:
-        print("\nTerminating; turning off backlight.")
-        backlight_off()
-        # keep_running = False
+        print("\n^C caught; terminating.")
+        # backlight_off()
+        _keep_running = False
+
+# Done!
+backlight_off()
+print(f"{sys.argv[0]} dropping out of main event loop.")
 
