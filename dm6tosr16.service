@@ -3,7 +3,7 @@ Description=dm6tosr16 starter
 After=default.target
 
 [Service]
-ExecStart=/home/rob/proj/dmswitcher/run_dm6tosr16.sh
+ExecStart=/home/rob/proj/dm6tosr16/run_dm6tosr16.sh
 
 [Install]
 WantedBy=default.target
