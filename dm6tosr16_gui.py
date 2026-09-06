@@ -4,6 +4,7 @@ dm6tosr16 gui
     https://learn.adafruit.com/adafruit-mini-pitft-135x240-color-tft-add-on-for-raspberry-pi/python-stats
 """
 
+import os
 import subprocess
 import time
 
@@ -106,7 +107,8 @@ while True:
             print(extra_msg)
             if count == 0:
                 print("DIE DIE DIE!")
-                # os.system("shutdown now -h")
+                os.system("shutdown now -h")
+                time.sleep(60) # needed? useful?
         button_was_pushed = True
     else:
         if button_was_pushed:
