@@ -39,6 +39,7 @@ A bunch of Linux stuff so the system runs automagically.
 # Thoughts
 
 # To Do
+See also #TODO: marks in Python code.
 ## Python
   * Handle interrupts
     * ^C: turn off backlight

@@ -16,6 +16,9 @@ import board
 import digitalio
 from adafruit_rgb_display import st7789
 
+# Some other nice fonts to try: http://www.dafont.com/bitmap.php
+# FONT_PATH = "fonts/upheaval.ttf"
+FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 print(f"{sys.argv[0]} starting up...")
 
@@ -28,7 +31,7 @@ REBOOT_COUNT = 5
 # Configuration for Adafruit 1.3" 240x240 TFT
 CS_PIN = digitalio.DigitalInOut(board.CE0)
 DC_PIN = digitalio.DigitalInOut(board.D25)
-RESET_PIN = digitalio.DigitalInOut(board.D24)
+RESET_PIN =  None
 HEIGHT = 240
 WIDTH = 240
 BAUDRATE = 64000000
@@ -52,7 +55,7 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGTERM, signal_handler)
 
 
-# Create the ST7789 display
+# Init the ST7789 display.
 disp = st7789.ST7789(
     board.SPI(),
     cs=CS_PIN,
@@ -62,30 +65,23 @@ disp = st7789.ST7789(
     width=WIDTH,
     height=HEIGHT,
     x_offset=0,
-    y_offset=80, # magic number?
+    y_offset=80 # magic number?
     )
 
-# Create blank image for drawing.
+# Create a blank image for drawing.
 # Make sure to create image with mode 'RGB' for full color.
-height = disp.height
-width = disp.width
-image = Image.new("RGB", (width, height))
-rotation = 180
+image = Image.new("RGB", (WIDTH, HEIGHT))
+rotation = 180 # buttons on the left - USB connectors down on RPi.
 
 # Get drawing object to draw on image.
 draw = ImageDraw.Draw(image)
-
-# # Draw a black filled box to clear the image.
-# draw.rectangle((0, 0, width, height), outline=0, fill=(0, 0, 0))
-# disp.image(image, rotation)
 
 # Display constants
 x = 0
 top = -2
 
 # Load a TrueType font.
-# Some other nice fonts to try: http://www.dafont.com/bitmap.php
-font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+font = ImageFont.truetype(FONT_PATH, 24)
 
 # Turn on the _backlight
 _backlight = digitalio.DigitalInOut(BACKLIGHT_PIN)
@@ -117,6 +113,8 @@ while _keep_running :
 
         extra_msg = ""
 
+        # Shutdown button pushed?
+        #
         button_is_pushed = not button24.value
         if button_is_pushed:
             if not button_was_pushed:
@@ -143,7 +141,7 @@ while _keep_running :
         # TODO: is this the best way to display this? Can I use labels instead????
 
         # Draw a black filled box to clear the image.
-        draw.rectangle((0, 0, width, height), outline=0, fill=0)
+        draw.rectangle((0, 0, WIDTH, HEIGHT), outline=0, fill=0)
 
         # Shell scripts for system monitoring from here:
         # https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
