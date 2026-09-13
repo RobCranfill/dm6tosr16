@@ -10,11 +10,16 @@ import subprocess
 import sys
 import time
 
-from PIL import Image, ImageDraw, ImageFont
-
 import board
 import digitalio
 from adafruit_rgb_display import st7789
+
+# MIDO Python/MIDI lib
+import mido
+
+# Python Image Library
+from PIL import Image, ImageDraw, ImageFont
+
 
 # Some other nice fonts to try: http://www.dafont.com/bitmap.php
 # FONT_PATH = "fonts/upheaval.ttf"
@@ -93,6 +98,21 @@ button24 = digitalio.DigitalInOut(board.D24)
 button24.direction = digitalio.Direction.INPUT
 button24.pull = digitalio.Pull.UP
 
+# Find the right input port to connect to
+print("Opening ALSA MIDI input port...")
+
+use_port = None
+while use_port is None:
+    ports = mido.get_input_names()
+    for port_name in ports:
+        if "DM6" in port_name:
+            use_port = port_name
+        elif "MPK" in port_name:
+            use_port = port_name
+
+print(f"Using MIDI port {use_port}")
+midi_port = mido.open_input(use_port)
+
 
 # IP isn't gonna change! only need to do this once.
 cmd = "hostname -I | cut -d' ' -f1"
@@ -110,6 +130,12 @@ extra_msg = ""
 while _keep_running :
 
     try:
+
+        msg = midi_port.receive()
+        if msg is not None:
+            print(f"Got MIDI message: {msg}")
+        # else:
+        # time.sleep(.1)
 
         extra_msg = ""
 
@@ -185,7 +211,7 @@ while _keep_running :
 
         # Display the image
         disp.image(image, rotation)
-        time.sleep(0.5)
+        time.sleep(0.1)
 
     # TODO: Does ^C get caught here, or does the signal handler get it?
     except KeyboardInterrupt:

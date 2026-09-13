@@ -32,18 +32,24 @@ A bunch of Linux stuff so the system runs automagically.
  * Python 3.something.
  * Adafruit "Blinka" library
    * Had to jump thru hoops for 'LGPIO', as per https://pimylifeup.com/raspberry-pi-install-lgpio/
+ * PIL and MIDO
+   * python3 -m pip install mido[ports-rtmidi]
  * This project.
 
 # Running
+ * source env/bin/activate
+   * alias 'senv'
+
 
 # Thoughts
 
 # To Do
 See also #TODO: marks in Python code.
 ## Python
-  * Handle interrupts
+  * Handle interrupts/signals
     * ^C: turn off backlight
     * SIGINT? or something for 'going down'?
+    * Handle stopping of service: blank screen, turn off backlight, more?
   * Can I show MIDI events in the GUI?
     * Will have to be able to tap into the stream. Can do?
 ## Scripts
