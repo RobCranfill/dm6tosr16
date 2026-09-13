@@ -27,8 +27,6 @@ FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 print(f"{sys.argv[0]} starting up...")
 
-# Main Event Loop pause time; TODO: needed?
-MEL_WAIT = 0.5
 
 # Count down from this for reboot:
 REBOOT_COUNT = 5
@@ -82,11 +80,11 @@ rotation = 180 # buttons on the left - USB connectors down on RPi.
 draw_object = ImageDraw.Draw(image)
 
 # Display constants
-x = 0
+display_left = 0
 top = -2
 
 # Load a TrueType font.
-font = ImageFont.truetype(FONT_PATH, 24)
+_font = ImageFont.truetype(FONT_PATH, 24)
 
 # Turn on the _backlight
 _backlight = digitalio.DigitalInOut(BACKLIGHT_PIN)
@@ -97,6 +95,7 @@ _backlight.value = True
 button24 = digitalio.DigitalInOut(board.D24)
 button24.direction = digitalio.Direction.INPUT
 button24.pull = digitalio.Pull.UP
+
 
 # Find the right input port to connect to
 print("Opening ALSA MIDI input port...")
@@ -114,94 +113,47 @@ print(f"Using MIDI port {use_port}")
 midi_port = mido.open_input(use_port)
 
 
-# IP isn't gonna change! only need to do this once.
-cmd = "hostname -I | cut -d' ' -f1"
-status_ip = "IP: " + subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-# For reboot function.
+# For reboot function. Count down from this max.
 count = REBOOT_COUNT
 button_was_pushed = False
 
 
-def update_display_one(draw, status_message):
-    '''First take on display, as per demo. Not really what to show.'''
-
-    # TODO: is this the best way to display this? Can I use labels instead????
-    
-    # Draw a black filled box to clear the image.
-    draw.rectangle((0, 0, WIDTH, HEIGHT), outline=0, fill=0)
-
-    # Shell scripts for system monitoring from here:
-    # https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
-
-    cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
-    status_cpu = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-    cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
-    status_mem = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-    cmd = 'df -h | awk \'$NF=="/"{printf "Disk: %d/%d GB  %s", $3,$2,$5}\''
-    status_disk = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-    cmd = "cat /sys/class/thermal/thermal_zone0/temp |  awk '{printf \"CPU Temp: %.1f C\", $(NF-0) / 1000}'"
-    status_temp = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-    # Write the four variable lines of text.
-    y = top
-    draw.text((x, y), status_ip, font=font, fill="#FFFFFF")
-
-    yh = 22
-    y += yh
-    draw.text((x, y), status_cpu, font=font, fill="#FFFF00")
-
-    y += yh
-    draw.text((x, y), status_mem, font=font, fill="#00FF00")
-
-    y += yh
-    draw.text((x, y), status_disk, font=font, fill="#0000FF")
-
-    y += yh
-    draw.text((x, y), status_temp, font=font, fill="#FF00FF")
-
-    # Shutdowwn stuff
-    y += yh * 4
-    draw.text((x, y), "<--- SHUTDOWN", font=font, fill="#FFFF00")
-
-    y += yh
-    draw.text((x, y), status_message, font=font, fill="#FFFF00")
-
-
-    # Display the image
-    disp.image(image, rotation)
-
-
-def update_display_two(draw, status_message):
-
-    # TODO: is this the best way to display this? Can I use labels instead????
+# TODO: this doesn't really work??
+def blank_screen(draw):
 
     # Draw a black filled box to clear the image.
     draw.rectangle((0, 0, WIDTH, HEIGHT), outline=0, fill=0)
 
-    y = top
-    draw.text((x, y), "DM6 to SR16 online!", font=font, fill="#FFFFFF")
 
+def update_display(draw, status_message, midi_count):
 
-    # Shutdowwn label
+    # TODO: is this the best way to display this? Can I use labels instead????
+
+    blank_screen(draw)
+
+    y = top + 20
+    draw.text((display_left, y), "DM6 to SR16 online!", font=_font, fill="#FFFFFF")
+
+    # Status message
+    y += 30
+    draw.text((display_left, y), status_message, font=_font, fill="#FFFF00")
+
+    # MIDI info
+    y += 22
+    draw.text((display_left, y), f"{midi_count} MIDI events", font=_font, fill="#FF00FF")
+
+    # Button label
     y = 200
-    draw.text((x, y), "<--- SHUTDOWN", font=font, fill="#FFFF00")
+    draw.text((display_left, y), "<--- SHUTDOWN", font=_font, fill="#FFFF00")
 
-    # Status
-    y += yh
-    draw.text((x, y), status, font=font, fill="#FFFF00")
-
-
-    # Display the image
     disp.image(image, rotation)
-
 
 
 # Status message at bottom of screen
 extra_msg = ""
+
+start_time = time.monotonic()
+midi_event_count = 0
 
 # Main event loop. Catch exceptions and either restart and keep going, or die.
 #
@@ -209,13 +161,15 @@ while _keep_running :
 
     try:
 
-        msg = midi_port.receive()
-        if msg is not None:
-            print(f"Got MIDI message: {msg}")
-        # else:
-        # time.sleep(.1)
+        # msg = midi_port.poll()
+        # if msg is not None:
+        #     print(f"Got MIDI message: {msg}")
+        #     midi_event_count += 1
 
-        extra_msg = ""
+        for msg in midi_port.iter_pending():
+            midi_event_count += 1
+
+        extra_msg = None
 
         # Shutdown button pushed?
         #
@@ -230,7 +184,7 @@ while _keep_running :
                 print(extra_msg)
                 if count == 0:
                     print(f"{sys.argv[0]} shutting down!")
-                    # Won't work if run in user space, but OK as service?
+                    # Won't work if run in user space, but OK as service. Fine.
                     os.system("shutdown -h now")
                     time.sleep(60) # TODO: needed? useful?
             button_was_pushed = True
@@ -241,13 +195,13 @@ while _keep_running :
                 button_was_pushed = False
                 count = REBOOT_COUNT
 
-        # TODO: What to show???
+        if extra_msg is None:
+            uptime = int(time.monotonic() - start_time)
+            extra_msg = f"Up {uptime} seconds"
 
-        # update_display_one(draw_object, extra_msg)
+        update_display(draw_object, extra_msg, midi_event_count)
 
-        update_display_two(draw_object, extra_msg)
-
-        time.sleep(0.1)
+        time.sleep(0.2)
 
     # TODO: Does ^C get caught here, or does the signal handler get it?
     except KeyboardInterrupt:
@@ -256,6 +210,6 @@ while _keep_running :
         _keep_running = False
 
 # Done!
+blank_screen(draw_object)
 backlight_off()
 print(f"{sys.argv[0]} dropping out of main event loop.")
-
