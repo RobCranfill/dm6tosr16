@@ -79,7 +79,7 @@ image = Image.new("RGB", (WIDTH, HEIGHT))
 rotation = 180 # buttons on the left - USB connectors down on RPi.
 
 # Get drawing object to draw on image.
-draw = ImageDraw.Draw(image)
+draw_object = ImageDraw.Draw(image)
 
 # Display constants
 x = 0
@@ -122,6 +122,84 @@ status_ip = "IP: " + subprocess.check_output(cmd, shell=True).decode("utf-8")
 count = REBOOT_COUNT
 button_was_pushed = False
 
+
+def update_display_one(draw, status_message):
+    '''First take on display, as per demo. Not really what to show.'''
+
+    # TODO: is this the best way to display this? Can I use labels instead????
+    
+    # Draw a black filled box to clear the image.
+    draw.rectangle((0, 0, WIDTH, HEIGHT), outline=0, fill=0)
+
+    # Shell scripts for system monitoring from here:
+    # https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
+
+    cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
+    status_cpu = subprocess.check_output(cmd, shell=True).decode("utf-8")
+
+    cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
+    status_mem = subprocess.check_output(cmd, shell=True).decode("utf-8")
+
+    cmd = 'df -h | awk \'$NF=="/"{printf "Disk: %d/%d GB  %s", $3,$2,$5}\''
+    status_disk = subprocess.check_output(cmd, shell=True).decode("utf-8")
+
+    cmd = "cat /sys/class/thermal/thermal_zone0/temp |  awk '{printf \"CPU Temp: %.1f C\", $(NF-0) / 1000}'"
+    status_temp = subprocess.check_output(cmd, shell=True).decode("utf-8")
+
+    # Write the four variable lines of text.
+    y = top
+    draw.text((x, y), status_ip, font=font, fill="#FFFFFF")
+
+    yh = 22
+    y += yh
+    draw.text((x, y), status_cpu, font=font, fill="#FFFF00")
+
+    y += yh
+    draw.text((x, y), status_mem, font=font, fill="#00FF00")
+
+    y += yh
+    draw.text((x, y), status_disk, font=font, fill="#0000FF")
+
+    y += yh
+    draw.text((x, y), status_temp, font=font, fill="#FF00FF")
+
+    # Shutdowwn stuff
+    y += yh * 4
+    draw.text((x, y), "<--- SHUTDOWN", font=font, fill="#FFFF00")
+
+    y += yh
+    draw.text((x, y), status_message, font=font, fill="#FFFF00")
+
+
+    # Display the image
+    disp.image(image, rotation)
+
+
+def update_display_two(draw, status_message):
+
+    # TODO: is this the best way to display this? Can I use labels instead????
+
+    # Draw a black filled box to clear the image.
+    draw.rectangle((0, 0, WIDTH, HEIGHT), outline=0, fill=0)
+
+    y = top
+    draw.text((x, y), "DM6 to SR16 online!", font=font, fill="#FFFFFF")
+
+
+    # Shutdowwn label
+    y = 200
+    draw.text((x, y), "<--- SHUTDOWN", font=font, fill="#FFFF00")
+
+    # Status
+    y += yh
+    draw.text((x, y), status, font=font, fill="#FFFF00")
+
+
+    # Display the image
+    disp.image(image, rotation)
+
+
+
 # Status message at bottom of screen
 extra_msg = ""
 
@@ -163,54 +241,12 @@ while _keep_running :
                 button_was_pushed = False
                 count = REBOOT_COUNT
 
+        # TODO: What to show???
 
-        # TODO: is this the best way to display this? Can I use labels instead????
+        # update_display_one(draw_object, extra_msg)
 
-        # Draw a black filled box to clear the image.
-        draw.rectangle((0, 0, WIDTH, HEIGHT), outline=0, fill=0)
+        update_display_two(draw_object, extra_msg)
 
-        # Shell scripts for system monitoring from here:
-        # https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
-
-        cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
-        status_cpu = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-        cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
-        status_mem = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-        cmd = 'df -h | awk \'$NF=="/"{printf "Disk: %d/%d GB  %s", $3,$2,$5}\''
-        status_disk = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-        cmd = "cat /sys/class/thermal/thermal_zone0/temp |  awk '{printf \"CPU Temp: %.1f C\", $(NF-0) / 1000}'"
-        status_temp = subprocess.check_output(cmd, shell=True).decode("utf-8")
-
-        # Write four lines of text.
-        y = top
-        draw.text((x, y), status_ip, font=font, fill="#FFFFFF")
-
-        yh = 22
-        y += yh
-        draw.text((x, y), status_cpu, font=font, fill="#FFFF00")
-
-        y += yh
-        draw.text((x, y), status_mem, font=font, fill="#00FF00")
-
-        y += yh
-        draw.text((x, y), status_disk, font=font, fill="#0000FF")
-
-        y += yh
-        draw.text((x, y), status_temp, font=font, fill="#FF00FF")
-
-        # Shutdowwn stuff
-        y += yh * 4
-        draw.text((x, y), "<--- SHUTDOWN", font=font, fill="#FFFF00")
-
-        y += yh
-        draw.text((x, y), extra_msg, font=font, fill="#FFFF00")
-
-
-        # Display the image
-        disp.image(image, rotation)
         time.sleep(0.1)
 
     # TODO: Does ^C get caught here, or does the signal handler get it?
