@@ -3,7 +3,9 @@ echo pulling files from PiFlight via SMB...
 
 FILES="README.md
 dm6tosr16_gui_pil.py
+mini_pi_tft_display_pil.py
 dm6tosr16_gui_pg.py
+mini_pi_tft_display.py
 requirements.text
 dm6tosr16.service
 dm6tosr16_service.sh

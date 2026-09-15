@@ -12,39 +12,18 @@ import time
 
 import board
 import digitalio
-from adafruit_rgb_display import st7789
 
 # MIDO Python/MIDI lib
 import mido
 
-# Python Image Library
-from PIL import Image, ImageDraw, ImageFont
+import mini_pi_tft_display_pil
 
-
-# Some other nice fonts to try: http://www.dafont.com/bitmap.php
-# FONT_PATH = "fonts/upheaval.ttf"
-FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 print(f"{sys.argv[0]} starting up...")
-
 
 # Count down from this for reboot:
 REBOOT_COUNT = 5
 
-# Configuration for Adafruit 1.3" 240x240 TFT
-CS_PIN = digitalio.DigitalInOut(board.CE0)
-DC_PIN = digitalio.DigitalInOut(board.D25)
-RESET_PIN =  None
-HEIGHT = 240
-WIDTH = 240
-BAUDRATE = 64000000
-
-BACKLIGHT_PIN = board.D22
-_backlight = digitalio.DigitalInOut(BACKLIGHT_PIN)
-_backlight.switch_to_output()
-
-def backlight_off():
-    _backlight.value = False
 
 _keep_running = True
 
@@ -56,40 +35,6 @@ def signal_handler(sig, frame):
     _keep_running = False
 
 signal.signal(signal.SIGTERM, signal_handler)
-
-
-# Init the ST7789 display.
-disp = st7789.ST7789(
-    board.SPI(),
-    cs=CS_PIN,
-    dc=DC_PIN,
-    rst=RESET_PIN,
-    baudrate=BAUDRATE,
-    width=WIDTH,
-    height=HEIGHT,
-    x_offset=0,
-    y_offset=80 # magic number?
-    )
-
-# Create a blank image for drawing.
-# Make sure to create image with mode 'RGB' for full color.
-image = Image.new("RGB", (WIDTH, HEIGHT))
-rotation = 180 # buttons on the left - USB connectors down on RPi.
-
-# Get drawing object to draw on image.
-draw_object = ImageDraw.Draw(image)
-
-# Display constants
-display_left = 0
-top = -2
-
-# Load a TrueType font.
-_font = ImageFont.truetype(FONT_PATH, 24)
-
-# Turn on the _backlight
-_backlight = digitalio.DigitalInOut(BACKLIGHT_PIN)
-_backlight.switch_to_output()
-_backlight.value = True
 
 
 button24 = digitalio.DigitalInOut(board.D24)
@@ -118,36 +63,8 @@ count = REBOOT_COUNT
 button_was_pushed = False
 
 
-# TODO: this doesn't really work??
-def blank_screen(draw):
-
-    # Draw a black filled box to clear the image.
-    draw.rectangle((0, 0, WIDTH, HEIGHT), outline=0, fill=0)
-
-
-def update_display(draw, status_message, midi_count):
-
-    # TODO: is this the best way to display this? Can I use labels instead????
-
-    blank_screen(draw)
-
-    y = top + 20
-    draw.text((display_left, y), "DM6 to SR16 online!", font=_font, fill="#FFFFFF")
-
-    # Status message
-    y += 30
-    draw.text((display_left, y), status_message, font=_font, fill="#FFFF00")
-
-    # MIDI info
-    y += 22
-    draw.text((display_left, y), f"{midi_count} MIDI events", font=_font, fill="#FF00FF")
-
-    # Button label
-    y = 180
-    draw.text((display_left, y), "<--- SHUT DOWN", font=_font, fill="#FFFF00")
-
-    disp.image(image, rotation)
-
+display = mini_pi_tft_display_pil.tft_display()
+display.blank_screen()
 
 # Status message at bottom of screen
 extra_msg = ""
@@ -191,11 +108,10 @@ while _keep_running :
                 button_was_pushed = False
                 count = REBOOT_COUNT
 
-        if extra_msg is None:
-            uptime = int(time.monotonic() - start_time)
-            extra_msg = f"Up {uptime} seconds"
-
-        update_display(draw_object, extra_msg, midi_event_count)
+        # TODO: show uptime in HH:MM:SS ?
+        uptime = int(time.monotonic() - start_time)
+        hms = time.strftime('%H:%M:%S', time.gmtime(uptime))
+        display.update(f"Uptime {hms}", midi_event_count, extra_msg)
 
         time.sleep(0.2)
 
@@ -206,6 +122,6 @@ while _keep_running :
         _keep_running = False
 
 # Done!
-blank_screen(draw_object)
-backlight_off()
+display.blank_screen()
+display.backlight_on(False)
 print(f"{sys.argv[0]} dropping out of main event loop.")
