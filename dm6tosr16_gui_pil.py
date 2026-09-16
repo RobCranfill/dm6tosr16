@@ -69,7 +69,9 @@ def find_midi_port(name_or_fragment, look_for_input_not_output):
     return midi_port
 
 input_port  = find_midi_port("e-drum", True)
-output_port = find_midi_port("MidiSport", False)
+
+# F* me. We only need input to show MIDI messages. Output routing is done elsewhere!
+# output_port = find_midi_port("MidiSport", False)
 
 
 # For reboot function. Count down from this max.
