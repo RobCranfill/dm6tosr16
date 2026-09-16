@@ -1,7 +1,6 @@
 """
-dm6tosr16 gui
- adapted from
-    https://learn.adafruit.com/adafruit-mini-pitft-135x240-color-tft-add-on-for-raspberry-pi/python-stats
+    dm6tosr16 gui
+    See https://github.com/RobCranfill/dm6tosr16
 """
 
 import os
@@ -16,6 +15,7 @@ import digitalio
 # MIDO Python/MIDI lib
 import mido
 
+# The PIL-based GUI is good enough for now.
 import mini_pi_tft_display_pil
 
 
@@ -45,17 +45,33 @@ button24.pull = digitalio.Pull.UP
 # Find the right input port to connect to
 print("Opening ALSA MIDI input port...")
 
-use_port = None
-while use_port is None:
-    ports = mido.get_input_names()
-    for port_name in ports:
-        if "DM6" in port_name:
-            use_port = port_name
-        elif "MPK" in port_name:
-            use_port = port_name
+def find_midi_port(name_or_fragment, look_for_input_not_output):
 
-print(f"Using MIDI port {use_port}")
-midi_port = mido.open_input(use_port)
+    in_or_out = "input" if look_for_input_not_output else "output"
+
+    port_to_use = None
+    print(f"Looking for MIDI {in_or_out} port '{name_or_fragment}'....")
+    while port_to_use is None:
+
+        if look_for_input_not_output:
+            ports = mido.get_input_names()
+        else:
+            ports = mido.get_output_names()
+
+        for port_name in ports:
+            if name_or_fragment in port_name:
+                port_to_use = port_name
+        if port_to_use is None:
+            print("  Scanning ports again....")
+            time.sleep(2)
+    print(f"  Using MIDI port {port_to_use} as {in_or_out}.")
+    midi_port = mido.open_input(port_to_use)
+    return midi_port
+
+input_port  = find_midi_port("e-drum", True)
+
+# F* me. We only need input to show MIDI messages. Output routing is done elsewhere!
+# output_port = find_midi_port("MidiSport", False)
 
 
 # For reboot function. Count down from this max.
@@ -79,7 +95,7 @@ while _keep_running :
     try:
 
         # We just want to count the messages.
-        for msg in midi_port.iter_pending():
+        for msg in input_port.iter_pending():
             midi_event_count += 1
 
         extra_msg = None
