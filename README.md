@@ -55,3 +55,6 @@ See also #TODO: marks in Python code.
 ## Scripts
   * Can service keep the app alive? I think so.
   * Error handling (if only message log) if MIDI hardware not found.
+
+journalctl -u dm6tosr16
+
