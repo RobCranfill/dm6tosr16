@@ -13,6 +13,8 @@ USB MIDI interface (a MIDISport Uno - ancient!) works just fine.
 The most complicated thing is the GUI that lets you shut the system down nicely,
 since it's a Linux box and doesn't like having its power pulled while running.
 
+![PIL version of GUI](./doc/gui_pil_1.jpg):
+
 
 # Concept of Operation
 ## MIDI Routing
@@ -20,7 +22,7 @@ Is handled by a couple calls to the standard Linux ALSA MIDI command 'aconnect'.
 Works like magic!
 
 ## GUI
-Shows status - what? - and allows nice shutdown.
+Shows status and allows nice shutdown.
 
 ## Scripts
 A bunch of Linux stuff so the system runs automagically.
