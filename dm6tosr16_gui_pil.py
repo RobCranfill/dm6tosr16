@@ -45,7 +45,7 @@ button24.pull = digitalio.Pull.UP
 # Find the right input port to connect to
 print("Opening ALSA MIDI input port...")
 
-def find_midi_port(name_or_fragment, look_for_input_not_output):
+def find_midi_port(tft, name_or_fragment, look_for_input_not_output):
 
     in_or_out = "input" if look_for_input_not_output else "output"
 
@@ -63,15 +63,11 @@ def find_midi_port(name_or_fragment, look_for_input_not_output):
                 port_to_use = port_name
         if port_to_use is None:
             print("  Scanning ports again....")
+            display.update("Scanning ports again....", 0, "No DM6 found!")
             time.sleep(2)
     print(f"  Using MIDI port {port_to_use} as {in_or_out}.")
     midi_port = mido.open_input(port_to_use)
     return midi_port
-
-input_port  = find_midi_port("e-drum", True)
-
-# F* me. We only need input to show MIDI messages. Output routing is done elsewhere!
-# output_port = find_midi_port("MidiSport", False)
 
 
 # For reboot function. Count down from this max.
@@ -87,6 +83,9 @@ extra_msg = ""
 
 start_time = time.monotonic()
 midi_event_count = 0
+
+
+input_port = find_midi_port(display, "e-drum", True)
 
 # Main event loop. Catch exceptions and either restart and keep going, or die.
 #
