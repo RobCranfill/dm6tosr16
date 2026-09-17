@@ -13,6 +13,7 @@ USB MIDI interface (a MIDISport Uno - ancient!) works just fine.
 The most complicated thing is the GUI that lets you shut the system down nicely,
 since it's a Linux box and doesn't like having its power pulled while running.
 
+![The Python Image Library GUI](./doc/gui_pil_1.jpg)
 
 # Concept of Operation
 ## MIDI Routing
@@ -45,6 +46,8 @@ A bunch of Linux stuff so the system runs automagically.
 
 # To Do
 See also #TODO: marks in Python code.
+* Error handling:
+  * Missing hardware at startup
 ## Python
   * Handle interrupts/signals
     * ^C: turn off backlight
